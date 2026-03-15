@@ -2,39 +2,153 @@ local taxiVeh
 local isTaxi = false
 local Active = false
 
-local sub_b0b5 = { 
-    "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3", 
+local sub_b0b5 = {
+    "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
     "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
 }
 
+local overlayIndexMap = {
+    blemishes = 0,
+    facialHair = 1,
+    eyebrows = 2,
+    aging = 3,
+    makeup = 4,
+    blush = 5,
+    complexion = 6,
+    sunDamage = 7,
+    lipstick = 8,
+    molesFreckles = 9,
+    chestHair = 10,
+    bodyBlemishes = 11,
+    addBodyBlemishes = 12,
+    beard = 1
+}
 
-local function applyPedVariations(ped, variations)
-    for _, v in ipairs(variations) do
-        if v[1] ~= 2 then
-            SetPedComponentVariation(ped, v[1], v[2], 0, 0) 
-        else
-            SetPedComponentVariation(ped, v[1], v[2], 1, 1) 
-        end
+local function randomInRange(range, fallbackMin, fallbackMax)
+    local min = range and range.min or fallbackMin
+    local max = range and range.max or fallbackMax
+    return math.random(min, max)
+end
+
+local function applyOverlay(ped, overlayName, overlayData, randomCfg)
+    local overlayId = overlayIndexMap[overlayName]
+    if not overlayId then return end
+
+    local style = overlayData.style or 0
+    local opacity = (overlayData.opacity or 100) / 100.0
+
+    if overlayName == 'blemishes' then
+        style = randomInRange(randomCfg.blemishesStyle, 0, 23)
+        opacity = randomInRange(randomCfg.blemishesOpacity, 20, 90) / 100.0
     end
-    for i = 0, 8 do
-        ClearPedProp(ped, i)
+
+    SetPedHeadOverlay(ped, overlayId, style, opacity)
+
+    if overlayData.color or overlayData.secondColor then
+        local colorType = overlayData.colorType or 1
+        local color = overlayData.color or 0
+        local secondColor = overlayData.secondColor or 0
+        SetPedHeadOverlayColor(ped, overlayId, colorType, color, secondColor)
     end
 end
 
+local function applyComponents(ped, components)
+    for _, component in ipairs(components or {}) do
+        SetPedComponentVariation(
+            ped,
+            component.component,
+            component.drawable or 0,
+            component.texture or 0,
+            component.palette or 0
+        )
+    end
+end
 
-local function setPedOutfit(ped, outfitType)
-    local outfits = {
-        [0] = {{0, 21}, {2, 9}, {3, 1}, {4, 9}, {6, 4}, {8, 15}, {11, 10}},
-        [1] = {{0, 13}, {2, 5}, {3, 1}, {4, 10}, {6, 10}, {7, 11}, {8, 13}, {11, 10}},
-        [2] = {{0, 15}, {2, 1}, {3, 1}, {4, 0}, {6, 1}, {8, 2}, {11, 6}},
-        [3] = {{0, 14}, {2, 5}, {3, 3}, {4, 1}, {6, 11}, {8, 2}, {11, 3}},
-        [4] = {{0, 18}, {2, 15}, {3, 15}, {4, 2}, {6, 4}, {7, 4}, {8, 3}, {11, 4}},
-        [5] = {{0, 27}, {2, 7}, {3, 11}, {4, 4}, {6, 13}, {7, 5}, {8, 3}, {11, 2}},
-        [6] = {{0, 16}, {2, 15}, {3, 3}, {4, 5}, {6, 2}, {8, 2}, {11, 3}}
-    }
+local function applyProps(ped, props)
+    for i = 0, 8 do
+        ClearPedProp(ped, i)
+    end
 
-    local selectedOutfit = outfits[outfitType] or outfits[0]
-    applyPedVariations(ped, selectedOutfit)
+    for _, prop in ipairs(props or {}) do
+        if (prop.drawable or -1) < 0 then
+            ClearPedProp(ped, prop.prop)
+        else
+            SetPedPropIndex(ped, prop.prop, prop.drawable, prop.texture or 0, true)
+        end
+    end
+end
+
+local function applyRandomizedPedAppearance(ped, outfit)
+    local settings = CodeStudio.PlanePedSettings or {}
+    local randomCfg = settings.random or {}
+
+    local raceShape = randomInRange(randomCfg.raceShape, 0, 45)
+    local raceSkin = randomInRange(randomCfg.raceSkin, 0, 45)
+    local shapeMix = math.random(35, 100) / 100.0
+    local skinMix = math.random(35, 100) / 100.0
+
+    SetPedHeadBlendData(
+        ped,
+        raceShape,
+        raceShape,
+        0,
+        raceSkin,
+        raceSkin,
+        0,
+        shapeMix,
+        skinMix,
+        0.0,
+        false
+    )
+
+    local hairData = outfit.hair or {}
+    local hairStyle = hairData.style or 0
+    local hairPrimary = randomInRange(randomCfg.hairColorPrimary, 0, 63)
+    local hairSecondary = randomInRange(randomCfg.hairColorSecondary, 0, 63)
+    SetPedComponentVariation(ped, 2, hairStyle, hairData.texture or 0, 0)
+    SetPedHairColor(ped, hairPrimary, hairSecondary)
+
+    local eyeColor = randomInRange(randomCfg.eyeColor, 0, 31)
+    SetPedEyeColor(ped, eyeColor)
+
+    applyOverlay(ped, 'blemishes', {}, randomCfg)
+    for overlayName, overlayData in pairs(outfit.overlays or {}) do
+        applyOverlay(ped, overlayName, overlayData, randomCfg)
+    end
+
+    if #(randomCfg.tattooCollection or {}) > 0 then
+        ClearPedDecorations(ped)
+        local tattooCollection = randomCfg.tattooCollection[math.random(1, #randomCfg.tattooCollection)]
+        AddPedDecorationFromHashes(ped, GetHashKey(tattooCollection), 0)
+    end
+
+    applyComponents(ped, outfit.components)
+    applyProps(ped, outfit.props)
+
+    if settings.useRcoreClothes and settings.rcoreApplyEvent then
+        TriggerEvent(settings.rcoreApplyEvent, ped, outfit)
+    end
+end
+
+local function getRandomPlanePedOutfit()
+    local pool = CodeStudio.PlanePedOutfitPool or {}
+    if #pool == 0 then
+        return {
+            model = `mp_m_freemode_01`,
+            hair = { style = 0 },
+            overlays = {},
+            components = {
+                { component = 3, drawable = 1, texture = 0 },
+                { component = 4, drawable = 0, texture = 0 },
+                { component = 6, drawable = 1, texture = 0 },
+                { component = 8, drawable = 15, texture = 0 },
+                { component = 11, drawable = 0, texture = 0 }
+            },
+            props = {}
+        }
+    end
+
+    return pool[math.random(1, #pool)]
 end
 
 RegisterNetEvent('cs:introCinematic:start', function()
@@ -61,13 +175,15 @@ RegisterNetEvent('cs:introCinematic:start', function()
 
     local ped = {}
     for i = 0, 6 do
-        local isFemale = (i % 2 == 1) 
-        local model = isFemale and `mp_f_freemode_01` or `mp_m_freemode_01`
+        local outfit = getRandomPlanePedOutfit()
+        local model = outfit.model or `mp_m_freemode_01`
+
         RequestModel(model)
         while not HasModelLoaded(model) do Wait(10) end
+
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
-        setPedOutfit(ped[i], i)
+        applyRandomizedPedAppearance(ped[i], outfit)
         RegisterEntityForCutscene(ped[i], sub_b0b5[i], 0, 0, 64)
     end
     
