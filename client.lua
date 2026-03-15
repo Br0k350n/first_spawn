@@ -2,6 +2,8 @@ local taxiVeh
 local isTaxi = false
 local Active = false
 
+math.randomseed(GetGameTimer())
+
 local sub_b0b5 = {
     "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
     "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
@@ -27,19 +29,28 @@ local overlayIndexMap = {
 local function randomInRange(range, fallbackMin, fallbackMax)
     local min = range and range.min or fallbackMin
     local max = range and range.max or fallbackMax
+
+    if min > max then
+        min, max = max, min
+    end
+
     return math.random(min, max)
 end
 
-local function applyOverlay(ped, overlayName, overlayData, randomCfg)
+local function randomFloatFromPercentRange(range, fallbackMin, fallbackMax)
+    return randomInRange(range, fallbackMin, fallbackMax) / 100.0
+end
+
+local function applyOverlay(ped, overlayName, overlayData, randomCfg, randomizeCfg)
     local overlayId = overlayIndexMap[overlayName]
     if not overlayId then return end
 
     local style = overlayData.style or 0
     local opacity = (overlayData.opacity or 100) / 100.0
 
-    if overlayName == 'blemishes' then
+    if overlayName == 'blemishes' and randomizeCfg.blemishes then
         style = randomInRange(randomCfg.blemishesStyle, 0, 23)
-        opacity = randomInRange(randomCfg.blemishesOpacity, 20, 90) / 100.0
+        opacity = randomFloatFromPercentRange(randomCfg.blemishesOpacity, 20, 90)
     end
 
     SetPedHeadOverlay(ped, overlayId, style, opacity)
@@ -78,22 +89,94 @@ local function applyProps(ped, props)
     end
 end
 
+local function applyFaceFeatures(ped, faceFeatures)
+    if not faceFeatures then return end
+
+    for index, value in pairs(faceFeatures) do
+        local featureIndex = tonumber(index)
+        local featureValue = tonumber(value)
+        if featureIndex and featureValue then
+            SetPedFaceFeature(ped, featureIndex, featureValue)
+        end
+    end
+end
+
+local function applyRandomTattoos(ped, settings)
+    local tattooPool = settings.tattooPool or {}
+    if #tattooPool == 0 then
+        return
+    end
+
+    ClearPedDecorations(ped)
+
+    local chance = settings.tattooChance or 35
+    if math.random(1, 100) > chance then
+        return
+    end
+
+    local tattooEntry = tattooPool[math.random(1, #tattooPool)]
+    if tattooEntry and tattooEntry.collection and tattooEntry.name then
+        AddPedDecorationFromHashes(ped, GetHashKey(tattooEntry.collection), GetHashKey(tattooEntry.name))
+    end
+end
+
+local function applyRcoreAppearanceIfEnabled(ped, outfit, settings)
+    local rcoreCfg = settings.rcore or {}
+    if not rcoreCfg.enabled then
+        return
+    end
+
+    local resourceName = rcoreCfg.resource or 'rcore_clothes'
+    local exportName = rcoreCfg.export
+
+    if not exportName or exportName == '' then
+        return
+    end
+
+    local resourceState = GetResourceState(resourceName)
+    if resourceState ~= 'started' then
+        print(('[cs_intro] rcore bridge skipped: resource %s is %s'):format(resourceName, resourceState))
+        return
+    end
+
+    local ok, err = pcall(function()
+        exports[resourceName][exportName](ped, outfit)
+    end)
+
+    if not ok then
+        print(('[cs_intro] rcore bridge failed (%s:%s): %s'):format(resourceName, exportName, err))
+    end
+end
+
 local function applyRandomizedPedAppearance(ped, outfit)
     local settings = CodeStudio.PlanePedSettings or {}
     local randomCfg = settings.random or {}
+    local randomizeCfg = settings.randomize or {}
 
-    local raceShape = randomInRange(randomCfg.raceShape, 0, 45)
-    local raceSkin = randomInRange(randomCfg.raceSkin, 0, 45)
-    local shapeMix = math.random(35, 100) / 100.0
-    local skinMix = math.random(35, 100) / 100.0
+    local blend = outfit.blend or {}
+    local raceShapeFirst = blend.shapeFirst or 0
+    local raceShapeSecond = blend.shapeSecond or raceShapeFirst
+    local raceSkinFirst = blend.skinFirst or 0
+    local raceSkinSecond = blend.skinSecond or raceSkinFirst
+    local shapeMix = blend.shapeMix or 0.5
+    local skinMix = blend.skinMix or 0.5
+
+    if randomizeCfg.race ~= false then
+        raceShapeFirst = randomInRange(randomCfg.raceShape, 0, 45)
+        raceShapeSecond = randomInRange(randomCfg.raceShape, 0, 45)
+        raceSkinFirst = randomInRange(randomCfg.raceSkin, 0, 45)
+        raceSkinSecond = randomInRange(randomCfg.raceSkin, 0, 45)
+        shapeMix = randomFloatFromPercentRange(randomCfg.blendShapeMix, 35, 100)
+        skinMix = randomFloatFromPercentRange(randomCfg.blendSkinMix, 35, 100)
+    end
 
     SetPedHeadBlendData(
         ped,
-        raceShape,
-        raceShape,
+        raceShapeFirst,
+        raceShapeSecond,
         0,
-        raceSkin,
-        raceSkin,
+        raceSkinFirst,
+        raceSkinSecond,
         0,
         shapeMix,
         skinMix,
@@ -103,31 +186,37 @@ local function applyRandomizedPedAppearance(ped, outfit)
 
     local hairData = outfit.hair or {}
     local hairStyle = hairData.style or 0
-    local hairPrimary = randomInRange(randomCfg.hairColorPrimary, 0, 63)
-    local hairSecondary = randomInRange(randomCfg.hairColorSecondary, 0, 63)
+    local hairPrimary = hairData.colorPrimary or 0
+    local hairSecondary = hairData.colorSecondary or hairPrimary
+
+    if randomizeCfg.hairColor ~= false then
+        hairPrimary = randomInRange(randomCfg.hairColorPrimary, 0, 63)
+        hairSecondary = randomInRange(randomCfg.hairColorSecondary, 0, 63)
+    end
+
     SetPedComponentVariation(ped, 2, hairStyle, hairData.texture or 0, 0)
     SetPedHairColor(ped, hairPrimary, hairSecondary)
 
-    local eyeColor = randomInRange(randomCfg.eyeColor, 0, 31)
+    local eyeColor = outfit.eyeColor or 0
+    if randomizeCfg.eyeColor ~= false then
+        eyeColor = randomInRange(randomCfg.eyeColor, 0, 31)
+    end
     SetPedEyeColor(ped, eyeColor)
 
-    applyOverlay(ped, 'blemishes', {}, randomCfg)
+    applyOverlay(ped, 'blemishes', outfit.blemishes or {}, randomCfg, randomizeCfg)
     for overlayName, overlayData in pairs(outfit.overlays or {}) do
-        applyOverlay(ped, overlayName, overlayData, randomCfg)
+        applyOverlay(ped, overlayName, overlayData, randomCfg, randomizeCfg)
     end
 
-    if #(randomCfg.tattooCollection or {}) > 0 then
-        ClearPedDecorations(ped)
-        local tattooCollection = randomCfg.tattooCollection[math.random(1, #randomCfg.tattooCollection)]
-        AddPedDecorationFromHashes(ped, GetHashKey(tattooCollection), 0)
+    applyFaceFeatures(ped, outfit.faceFeatures)
+
+    if randomizeCfg.tattoos ~= false then
+        applyRandomTattoos(ped, settings)
     end
 
     applyComponents(ped, outfit.components)
     applyProps(ped, outfit.props)
-
-    if settings.useRcoreClothes and settings.rcoreApplyEvent then
-        TriggerEvent(settings.rcoreApplyEvent, ped, outfit)
-    end
+    applyRcoreAppearanceIfEnabled(ped, outfit, settings)
 end
 
 local function getRandomPlanePedOutfit()
