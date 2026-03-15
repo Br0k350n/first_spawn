@@ -26,6 +26,9 @@ local overlayIndexMap = {
     beard = 1
 }
 
+local pendingOutfitRequests = {}
+local databaseOutfitPool = {}
+
 local function randomInRange(range, fallbackMin, fallbackMax)
     local min = range and range.min or fallbackMin
     local max = range and range.max or fallbackMax
@@ -39,6 +42,129 @@ end
 
 local function randomFloatFromPercentRange(range, fallbackMin, fallbackMax)
     return randomInRange(range, fallbackMin, fallbackMax) / 100.0
+end
+
+local function parseRcorePiece(value)
+    if type(value) ~= 'string' then
+        return nil, nil, nil
+    end
+
+    local component, drawable, texture = value:match('.+%-%-(%-?%d+)%-%-(%-?%d+)%-%-(%-?%d+)')
+    if not component then
+        return nil, nil, nil
+    end
+
+    return tonumber(component), tonumber(drawable), tonumber(texture)
+end
+
+local function convertRcoreOutfitToPreset(entry)
+    if not entry or not entry.outfit then
+        return nil
+    end
+
+    local decoded = type(entry.outfit) == 'string' and json.decode(entry.outfit) or entry.outfit
+    if type(decoded) ~= 'table' then
+        return nil
+    end
+
+    local preset = {
+        model = tonumber(entry.model) or tonumber(entry.ped_model) or `mp_m_freemode_01`,
+        components = {},
+        props = {},
+        overlays = {},
+        rcoreOutfitData = decoded
+    }
+
+    local headblend = decoded.headblend or {}
+    preset.blend = {
+        shapeFirst = tonumber(headblend.maleModel) or 0,
+        shapeSecond = tonumber(headblend.femaleModel) or 0,
+        skinFirst = tonumber(headblend.maleTone) or 0,
+        skinSecond = tonumber(headblend.femaleTone) or 0,
+        shapeMix = tonumber(headblend.modelBlend) or 0.5,
+        skinMix = tonumber(headblend.toneBlend) or 0.5
+    }
+
+    local hair = decoded.hair or {}
+    local _, hairDrawable, hairTexture = parseRcorePiece(hair.id)
+    preset.hair = {
+        style = hairDrawable or 0,
+        texture = hairTexture or 0,
+        colorPrimary = tonumber(hair.color1) or 0,
+        colorSecondary = tonumber(hair.color2) or 0
+    }
+
+    for _, piece in pairs(decoded.components or {}) do
+        local component, drawable, texture = parseRcorePiece(piece)
+        if component ~= nil and drawable ~= nil and texture ~= nil then
+            if component >= 0 and component <= 11 then
+                preset.components[#preset.components + 1] = {
+                    component = component,
+                    drawable = drawable,
+                    texture = texture
+                }
+            elseif component >= 100 then
+                preset.props[#preset.props + 1] = {
+                    prop = component - 100,
+                    drawable = drawable,
+                    texture = texture
+                }
+            end
+        end
+    end
+
+    return preset
+end
+
+RegisterNetEvent('cs:introCinematic:receivePlaneOutfits', function(requestId, rows)
+    local cb = pendingOutfitRequests[requestId]
+    if cb then
+        pendingOutfitRequests[requestId] = nil
+        cb(rows or {})
+    end
+end)
+
+local function requestDatabaseOutfits(timeoutMs)
+    local requestId = ('%s:%s:%s'):format(GetPlayerServerId(PlayerId()), GetGameTimer(), math.random(1000, 9999))
+    local received = false
+    local response = {}
+
+    pendingOutfitRequests[requestId] = function(rows)
+        response = rows or {}
+        received = true
+    end
+
+    TriggerServerEvent('cs:introCinematic:requestPlaneOutfits', requestId)
+
+    local expireAt = GetGameTimer() + (timeoutMs or 2000)
+    while not received and GetGameTimer() < expireAt do
+        Wait(0)
+    end
+
+    pendingOutfitRequests[requestId] = nil
+
+    if not received then
+        return {}
+    end
+
+    return response
+end
+
+local function ensureDatabaseOutfitPool()
+    local sourceMode = (CodeStudio.PlanePedOutfitSource or 'config'):lower()
+    if sourceMode ~= 'database' then
+        return
+    end
+
+    local rows = requestDatabaseOutfits(2500)
+    databaseOutfitPool = {}
+
+    for i = 1, #rows do
+        local converted = convertRcoreOutfitToPreset(rows[i])
+        if converted then
+            databaseOutfitPool[#databaseOutfitPool + 1] = converted
+        end
+    end
 end
 
 local function applyOverlay(ped, overlayName, overlayData, randomCfg, randomizeCfg)
@@ -139,8 +265,10 @@ local function applyRcoreAppearanceIfEnabled(ped, outfit, settings)
         return
     end
 
+    local payload = outfit.rcoreOutfitData or outfit
+
     local ok, err = pcall(function()
-        exports[resourceName][exportName](ped, outfit)
+        exports[resourceName][exportName](ped, payload)
     end)
 
     if not ok then
@@ -220,7 +348,13 @@ local function applyRandomizedPedAppearance(ped, outfit)
 end
 
 local function getRandomPlanePedOutfit()
-    local pool = CodeStudio.PlanePedOutfitPool or {}
+    local sourceMode = (CodeStudio.PlanePedOutfitSource or 'config'):lower()
+    local pool = sourceMode == 'database' and databaseOutfitPool or (CodeStudio.PlanePedOutfitPool or {})
+
+    if #pool == 0 then
+        pool = CodeStudio.PlanePedOutfitPool or {}
+    end
+
     if #pool == 0 then
         return {
             model = `mp_m_freemode_01`,
@@ -261,6 +395,8 @@ RegisterNetEvent('cs:introCinematic:start', function()
     
     local oppositeGenderEntity = RegisterEntityForCutscene(0, gender and "MP_Female_Character" or "MP_Male_Character", 3, 0, 64)
     NetworkSetEntityInvisibleToNetwork(oppositeGenderEntity, true)
+
+    ensureDatabaseOutfitPool()
 
     local ped = {}
     for i = 0, 6 do

@@ -11,42 +11,52 @@ TriggerEvent('cs:introCinematic:start')
 
 ### It’s not a plug-and-play script. You’ll need to make it compatible with your server based on your needs, whether that’s integrating it with clothing, multicharacter, or a specific location. This script will work with any server
 
-## Plane NPC outfit pool (rcore_clothes ready)
-You can define a preset outfit pool for non-player peds used in the intro plane scene in `config.lua`:
+## Plane NPC outfit source
+You can choose where non-player plane outfits come from:
 
-- `CodeStudio.PlanePedOutfitPool`:
-  - `model`
-  - `blend` (optional manual race blend if race randomization is disabled)
-  - `hair`
-  - `overlays`
-  - `faceFeatures`
-  - `components` and `props`
-- `CodeStudio.PlanePedSettings.randomize` toggles true random traits:
-  - race
-  - hair color
-  - blemishes
-  - eye color
-  - tattoos
-- `CodeStudio.PlanePedSettings.random` sets min/max ranges used by randomization.
-- `CodeStudio.PlanePedSettings.tattooPool` is used for random tattoo picks.
+- `CodeStudio.PlanePedOutfitSource = 'database'` (recommended with `rcore_clothing_current`)
+- `CodeStudio.PlanePedOutfitSource = 'config'` (uses `CodeStudio.PlanePedOutfitPool`)
 
-Each plane ped picks a random outfit preset each cutscene run, and random traits are regenerated every run.
+### Database mode (use outfits from your players)
+In database mode, the script reads random rows from `rcore_clothing_current`, converts those outfits, and applies them to cutscene passengers.
+
+Config:
+```lua
+CodeStudio.PlanePedOutfitSource = 'database'
+CodeStudio.PlanePedDatabase = {
+  table = 'rcore_clothing_current',
+  limit = 128
+}
+```
+
+Supported SQL resources:
+- `oxmysql`
+- `mysql-async`
+
+If no SQL resource is running, it falls back to the config pool.
+
+## Randomization
+These are randomized each run for the plane NPCs (not the player), unless you disable them in `CodeStudio.PlanePedSettings.randomize`:
+- race / headblend
+- hair color
+- blemishes
+- eye color
+- tattoos
 
 ## rcore_clothes integration
-`CodeStudio.PlanePedSettings.rcore` is an optional export bridge:
+Optional export bridge:
 
 ```lua
 CodeStudio.PlanePedSettings.rcore = {
   enabled = true,
   resource = 'rcore_clothes',
-  export = 'YOUR_EXPORT_NAME'
+  export = 'setPedClothes'
 }
 ```
 
-When enabled, the script calls:
-
+The script calls:
 ```lua
 exports[resource][export](ped, outfit)
 ```
 
-Set `export` to the exact function name from your `rcore_clothes` API docs/version.
+If the outfit came from `rcore_clothing_current`, the raw decoded rcore payload is passed to the export.

@@ -13,6 +13,13 @@ CodeStudio.SkipToNearestLoc = vector4(-1198.92, -304.74, 37.47, 284.08) --Taxi S
 CodeStudio.WelcomeMessage = 'Welocome To My Server'
 CodeStudio.ReachedMessage = "We've reached our destination"
 
+CodeStudio.PlanePedOutfitSource = 'database' -- 'database' (rcore_clothing_current) or 'config'
+
+CodeStudio.PlanePedDatabase = {
+    table = 'rcore_clothing_current',
+    limit = 128
+}
+
 --[[
     Plane NPC outfit/randomization config (non-player plane peds only).
 
@@ -58,7 +65,7 @@ CodeStudio.PlanePedSettings = {
     rcore = {
         enabled = false,
         resource = 'rcore_clothes',
-        export = 'applyPedData' -- Example placeholder, change to your actual export name from docs.
+        export = 'setPedClothes' -- Change to your exact export name if your rcore_clothes version differs.
     },
 
     -- Truly random tattoo pools: one random item from each body part has tattooChance roll.
