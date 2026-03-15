@@ -20,6 +20,18 @@ CodeStudio.PlanePedDatabase = {
     limit = 128
 }
 
+
+CodeStudio.AdvancedPlanePedCreation = true -- false = use simple ped model pool without freemode customization
+CodeStudio.PlanePedModelPool = {
+    `a_m_m_business_01`,
+    `a_m_m_bevhills_01`,
+    `a_m_y_business_01`,
+    `a_f_m_business_02`,
+    `a_f_y_business_01`,
+    `a_f_y_bevhills_01`,
+    `a_m_m_socenlat_01`
+}
+
 --[[
     Plane NPC outfit/randomization config (non-player plane peds only).
 

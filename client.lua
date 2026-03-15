@@ -167,6 +167,19 @@ local function ensureDatabaseOutfitPool()
     end
 end
 
+local function isAdvancedPlanePedCreationEnabled()
+    return CodeStudio.AdvancedPlanePedCreation ~= false
+end
+
+local function getRandomSimplePlanePedModel()
+    local simplePool = CodeStudio.PlanePedModelPool or {}
+    if #simplePool == 0 then
+        return `a_m_m_business_01`
+    end
+
+    return simplePool[math.random(1, #simplePool)]
+end
+
 local function applyOverlay(ped, overlayName, overlayData, randomCfg, randomizeCfg)
     local overlayId = overlayIndexMap[overlayName]
     if not overlayId then return end
@@ -396,19 +409,26 @@ RegisterNetEvent('cs:introCinematic:start', function()
     local oppositeGenderEntity = RegisterEntityForCutscene(0, gender and "MP_Female_Character" or "MP_Male_Character", 3, 0, 64)
     NetworkSetEntityInvisibleToNetwork(oppositeGenderEntity, true)
 
-    ensureDatabaseOutfitPool()
+    local useAdvanced = isAdvancedPlanePedCreationEnabled()
+    if useAdvanced then
+        ensureDatabaseOutfitPool()
+    end
 
     local ped = {}
     for i = 0, 6 do
-        local outfit = getRandomPlanePedOutfit()
-        local model = outfit.model or `mp_m_freemode_01`
+        local outfit = useAdvanced and getRandomPlanePedOutfit() or nil
+        local model = useAdvanced and (outfit.model or `mp_m_freemode_01`) or getRandomSimplePlanePedModel()
 
         RequestModel(model)
         while not HasModelLoaded(model) do Wait(10) end
 
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
-        applyRandomizedPedAppearance(ped[i], outfit)
+
+        if useAdvanced and outfit then
+            applyRandomizedPedAppearance(ped[i], outfit)
+        end
+
         RegisterEntityForCutscene(ped[i], sub_b0b5[i], 0, 0, 64)
     end
     

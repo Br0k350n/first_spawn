@@ -35,6 +35,21 @@ Supported SQL resources:
 
 If no SQL resource is running, it falls back to the config pool.
 
+
+### Simple mode (disable advanced customization)
+If you just want random NPC models (no freemode face/hair/overlay customization), disable advanced mode:
+
+```lua
+CodeStudio.AdvancedPlanePedCreation = false
+CodeStudio.PlanePedModelPool = {
+  `a_m_m_business_01`,
+  `a_f_y_business_01`,
+  `a_m_m_socenlat_01`
+}
+```
+
+When disabled, passengers spawn from `PlanePedModelPool` only.
+
 ## Randomization
 These are randomized each run for the plane NPCs (not the player), unless you disable them in `CodeStudio.PlanePedSettings.randomize`:
 - race / headblend

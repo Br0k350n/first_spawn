@@ -27,8 +27,9 @@ end
 RegisterNetEvent('cs:introCinematic:requestPlaneOutfits', function(requestId)
     local src = source
     local sourceMode = (CodeStudio.PlanePedOutfitSource or 'config'):lower()
+    local useAdvanced = CodeStudio.AdvancedPlanePedCreation ~= false
 
-    if sourceMode ~= 'database' then
+    if not useAdvanced or sourceMode ~= 'database' then
         TriggerClientEvent('cs:introCinematic:receivePlaneOutfits', src, requestId, {})
         return
     end
