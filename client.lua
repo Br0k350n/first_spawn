@@ -447,25 +447,15 @@ RegisterNetEvent('cs:introCinematic:start', function()
     local oppositeGenderEntity = RegisterEntityForCutscene(0, gender and "MP_Female_Character" or "MP_Male_Character", 3, 0, 64)
     NetworkSetEntityInvisibleToNetwork(oppositeGenderEntity, true)
 
-    local useAdvanced = isAdvancedPlanePedCreationEnabled()
-    if useAdvanced then
-        ensureDatabaseOutfitPool()
-    end
-
     local ped = {}
     for i = 0, 6 do
-        local outfit = useAdvanced and getRandomPlanePedOutfit() or nil
-        local model = useAdvanced and (outfit.model or `mp_m_freemode_01`) or getRandomSimplePlanePedModel()
+        local model = getRandomSimplePlanePedModel()
 
         RequestModel(model)
         while not HasModelLoaded(model) do Wait(10) end
 
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
-
-        if useAdvanced and outfit then
-            applyRandomizedPedAppearance(ped[i], outfit)
-        end
 
         -- sub_b0b5 is a 1-based Lua array while this loop is 0-based.
         -- Shift index so each spawned ped is registered to the proper cutscene seat.
