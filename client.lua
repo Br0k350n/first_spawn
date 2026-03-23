@@ -439,7 +439,9 @@ RegisterNetEvent('cs:introCinematic:start', function()
             applyRandomizedPedAppearance(ped[i], outfit)
         end
 
-        RegisterEntityForCutscene(ped[i], sub_b0b5[i], 0, 0, 64)
+        -- sub_b0b5 is a 1-based Lua array while this loop is 0-based.
+        -- Shift index so each spawned ped is registered to the proper cutscene seat.
+        RegisterEntityForCutscene(ped[i], sub_b0b5[i + 1], 0, 0, 64)
     end
     
     NewLoadSceneStartSphere(-1212.79, -1673.52, 7, 1000, 0)
