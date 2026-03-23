@@ -68,6 +68,23 @@ local function parseRcorePiece(value)
     return tonumber(component), tonumber(drawable), tonumber(texture)
 end
 
+local function resolvePedModel(modelValue)
+    if type(modelValue) == 'number' then
+        return modelValue
+    end
+
+    if type(modelValue) == 'string' and modelValue ~= '' then
+        local numeric = tonumber(modelValue)
+        if numeric then
+            return numeric
+        end
+
+        return GetHashKey(modelValue)
+    end
+
+    return nil
+end
+
 local function convertRcoreOutfitToPreset(entry)
     if not entry or not entry.outfit then
         return nil
@@ -79,7 +96,7 @@ local function convertRcoreOutfitToPreset(entry)
     end
 
     local preset = {
-        model = tonumber(entry.model) or tonumber(entry.ped_model) or `mp_m_freemode_01`,
+        model = resolvePedModel(entry.model) or resolvePedModel(entry.ped_model) or `mp_m_freemode_01`,
         components = {},
         props = {},
         overlays = {},
@@ -366,7 +383,28 @@ local function applyRandomizedPedAppearance(ped, outfit)
         applyRandomTattoos(ped, settings)
     end
 
-    applyComponents(ped, outfit.components)
+    local components = outfit.components or {}
+    if #components == 0 then
+        if IsPedModel(ped, `mp_f_freemode_01`) then
+            components = {
+                { component = 3, drawable = 15, texture = 0 },
+                { component = 4, drawable = 15, texture = 0 },
+                { component = 6, drawable = 35, texture = 0 },
+                { component = 8, drawable = 3, texture = 0 },
+                { component = 11, drawable = 15, texture = 0 }
+            }
+        else
+            components = {
+                { component = 3, drawable = 15, texture = 0 },
+                { component = 4, drawable = 14, texture = 0 },
+                { component = 6, drawable = 34, texture = 0 },
+                { component = 8, drawable = 15, texture = 0 },
+                { component = 11, drawable = 15, texture = 0 }
+            }
+        end
+    end
+
+    applyComponents(ped, components)
     applyProps(ped, outfit.props)
     applyRcoreAppearanceIfEnabled(ped, outfit, settings)
 end
