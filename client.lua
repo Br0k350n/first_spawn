@@ -4,10 +4,21 @@ local Active = false
 
 math.randomseed(GetGameTimer())
 
+-- local sub_b0b5 = {
+--     "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
+--     "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
+-- }
+
 local sub_b0b5 = {
-    "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
-    "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
+    `a_m_m_business_01`,
+    `a_m_m_bevhills_01`,
+    `a_m_y_business_01`,
+    `a_f_m_business_02`,
+    `a_f_y_business_01`,
+    `a_f_y_bevhills_01`,
+    `a_m_m_socenlat_01`
 }
+
 
 local overlayIndexMap = {
     blemishes = 0,
@@ -168,7 +179,7 @@ local function ensureDatabaseOutfitPool()
 end
 
 local function isAdvancedPlanePedCreationEnabled()
-    return CodeStudio.AdvancedPlanePedCreation ~= false
+    return CodeStudio.AdvancedPlanePedCreation
 end
 
 local function getRandomSimplePlanePedModel()
@@ -417,11 +428,10 @@ RegisterNetEvent('cs:introCinematic:start', function()
     local ped = {}
     for i = 0, 6 do
         local outfit = useAdvanced and getRandomPlanePedOutfit() or nil
-        local model = useAdvanced and (outfit.model or `mp_m_freemode_01`) or getRandomSimplePlanePedModel()
-
+        local model = getRandomSimplePlanePedModel() -- useAdvanced and (outfit.model or `mp_m_freemode_01`) or 
+        print(model)
         RequestModel(model)
         while not HasModelLoaded(model) do Wait(10) end
-
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
 
@@ -434,6 +444,7 @@ RegisterNetEvent('cs:introCinematic:start', function()
     
     NewLoadSceneStartSphere(-1212.79, -1673.52, 7, 1000, 0)
     SetWeatherTypeNow("EXTRASUNNY")
+    DoScreenFadeIn(250)
     StartCutscene(4)
 
     Wait(34520) -- Cutscene duration

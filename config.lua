@@ -21,7 +21,7 @@ CodeStudio.PlanePedDatabase = {
 }
 
 
-CodeStudio.AdvancedPlanePedCreation = true -- false = use simple ped model pool without freemode customization
+CodeStudio.AdvancedPlanePedCreation = false -- false = use simple ped model pool without freemode customization
 CodeStudio.PlanePedModelPool = {
     `a_m_m_business_01`,
     `a_m_m_bevhills_01`,
