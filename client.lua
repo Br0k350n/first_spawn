@@ -4,19 +4,9 @@ local Active = false
 
 math.randomseed(GetGameTimer())
 
--- local sub_b0b5 = {
---     "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
---     "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
--- }
-
 local sub_b0b5 = {
-    `a_m_m_business_01`,
-    `a_m_m_bevhills_01`,
-    `a_m_y_business_01`,
-    `a_f_m_business_02`,
-    `a_f_y_business_01`,
-    `a_f_y_bevhills_01`,
-    `a_m_m_socenlat_01`
+    "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
+    "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
 }
 
 
