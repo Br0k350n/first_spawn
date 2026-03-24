@@ -75,3 +75,31 @@ exports[resource][export](ped, outfit)
 ```
 
 If the outfit came from `rcore_clothing_current`, the raw decoded rcore payload is passed to the export.
+
+## rcore_clothing compatibility
+This resource now supports an optional compatibility bridge for `rcore_clothing` so player skin is restored after the intro.
+
+Config:
+```lua
+CodeStudio.RCoreClothing = {
+  enabled = true,
+  resource = 'rcore_clothing',
+  useForPlanePeds = true,
+  planePedsUseCharacter = false,
+  restorePlayerSkin = true,
+  fixArmsAfterRestore = true
+}
+```
+
+Behavior:
+- Plane passengers can use rcore clothing payload via:
+  - `exports['rcore_clothing']:setPedSkin(ped, clothing)`
+  - Uses `getPlayerClothing(planePedsUseCharacter)` to source the payload
+- Before the cutscene starts, script tries to cache current skin via:
+  - `exports['rcore_clothing']:getPlayerSkin(true)`
+- After the cutscene, script restores cached skin via:
+  - `exports['rcore_clothing']:setPlayerSkin(skin, false)`
+- If cache is unavailable, it falls back to:
+  - `TriggerServerEvent('rcore_clothing:reloadSkin')`
+- Optional arm-fix call:
+  - `exports['rcore_clothing']:fixArms()`

@@ -13,6 +13,15 @@ CodeStudio.SkipToNearestLoc = vector4(-1198.92, -304.74, 37.47, 284.08) --Taxi S
 CodeStudio.WelcomeMessage = 'Welocome To Endless Dreams!'
 CodeStudio.ReachedMessage = "We've reached our destination"
 
+CodeStudio.RCoreClothing = {
+    enabled = false,                  -- Enable if you use rcore_clothing
+    resource = 'rcore_clothing',      -- Resource name
+    useForPlanePeds = true,           -- Apply rcore clothing on cutscene passengers (fixes naked freemode peds)
+    planePedsUseCharacter = false,    -- false = clothing only, true = includes face/hair data
+    restorePlayerSkin = true,         -- Restore player skin after cutscene (recommended)
+    fixArmsAfterRestore = true        -- Run fixArms() after restoring skin
+}
+
 
 function Notify(msg)
     -- SetNotificationTextEntry('STRING') --- DELETE ME IF YOU ARE USING ANOTHER SYSTEM

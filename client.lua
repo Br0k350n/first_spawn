@@ -1,6 +1,8 @@
 local taxiVeh
 local isTaxi = false
 local Active = false
+local cachedPlayerSkin = nil
+local cachedPlayerClothing = nil
 
 local sub_b0b5 = { 
     "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3", 
@@ -37,12 +39,69 @@ local function setPedOutfit(ped, outfitType)
     applyPedVariations(ped, selectedOutfit)
 end
 
+local function isRCoreClothingEnabled()
+    return CodeStudio.RCoreClothing
+        and CodeStudio.RCoreClothing.enabled
+        and GetResourceState(CodeStudio.RCoreClothing.resource) == 'started'
+end
+
+local function cachePlayerSkin()
+    if not isRCoreClothingEnabled() then return end
+
+    local ok, skin = pcall(function()
+        return exports[CodeStudio.RCoreClothing.resource]:getPlayerSkin(true)
+    end)
+
+    if ok and skin then
+        cachedPlayerSkin = skin
+    end
+
+    local clothingOk, clothing = pcall(function()
+        return exports[CodeStudio.RCoreClothing.resource]:getPlayerClothing(CodeStudio.RCoreClothing.planePedsUseCharacter)
+    end)
+
+    if clothingOk and clothing then
+        cachedPlayerClothing = clothing
+    end
+end
+
+local function applyRCoreClothingToPed(ped)
+    if not isRCoreClothingEnabled() then return false end
+    if not CodeStudio.RCoreClothing.useForPlanePeds then return false end
+    if not cachedPlayerClothing then return false end
+
+    local ok = pcall(function()
+        exports[CodeStudio.RCoreClothing.resource]:setPedSkin(ped, cachedPlayerClothing)
+    end)
+
+    return ok
+end
+
+local function restorePlayerSkin()
+    if not isRCoreClothingEnabled() or not CodeStudio.RCoreClothing.restorePlayerSkin then return end
+
+    if cachedPlayerSkin then
+        pcall(function()
+            exports[CodeStudio.RCoreClothing.resource]:setPlayerSkin(cachedPlayerSkin, false)
+        end)
+    else
+        TriggerServerEvent('rcore_clothing:reloadSkin')
+    end
+
+    if CodeStudio.RCoreClothing.fixArmsAfterRestore then
+        pcall(function()
+            exports[CodeStudio.RCoreClothing.resource]:fixArms()
+        end)
+    end
+end
+
 RegisterNetEvent('cs:introCinematic:start', function()
     local plyrId = PlayerPedId()
     local gender = IsPedModel(plyrId, "mp_m_freemode_01")
     
     PrepareMusicEvent("FM_INTRO_START")
     TriggerMusicEvent("FM_INTRO_START")
+    cachePlayerSkin()
 
     local cutsceneType = gender and 31 or 103
     RequestCutsceneWithPlaybackList("MP_INTRO_CONCAT", cutsceneType, 8)
@@ -67,7 +126,9 @@ RegisterNetEvent('cs:introCinematic:start', function()
         while not HasModelLoaded(model) do Wait(10) end
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
-        setPedOutfit(ped[i], i)
+        if not applyRCoreClothingToPed(ped[i]) then
+            setPedOutfit(ped[i], i)
+        end
         RegisterEntityForCutscene(ped[i], sub_b0b5[i], 0, 0, 64)
     end
     
@@ -88,6 +149,7 @@ RegisterNetEvent('cs:introCinematic:start', function()
     DoScreenFadeOut(250)
     Wait(2500)
 
+    restorePlayerSkin()
     ClearPedWetness(plyrId)
 
     if CodeStudio.useTaxi then
