@@ -13,24 +13,6 @@ CodeStudio.SkipToNearestLoc = vector4(-1198.92, -304.74, 37.47, 284.08) --Taxi S
 CodeStudio.WelcomeMessage = 'Welocome To Endless Dreams!'
 CodeStudio.ReachedMessage = "We've reached our destination"
 
-CodeStudio.PlanePedOutfitSource = 'config' -- Legacy option kept for compatibility; plane passengers now use pre-made ped models only.
-
-CodeStudio.PlanePedDatabase = {
-    table = 'rcore_clothing_current',
-    limit = 128
-}
-
-
-CodeStudio.AdvancedPlanePedCreation = false -- Plane passengers use simple pre-made ped models (no freemode customization).
-CodeStudio.PlanePedModelPool = {
-    `a_m_m_business_01`,
-    `a_m_m_bevhills_01`,
-    `a_m_y_business_01`,
-    `a_f_m_business_02`,
-    `a_f_y_business_01`,
-    `a_f_y_bevhills_01`,
-    `a_m_m_socenlat_01`
-}
 
 function Notify(msg)
     -- SetNotificationTextEntry('STRING') --- DELETE ME IF YOU ARE USING ANOTHER SYSTEM
