@@ -4,19 +4,9 @@ local Active = false
 
 math.randomseed(GetGameTimer())
 
--- local sub_b0b5 = {
---     "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
---     "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
--- }
-
 local sub_b0b5 = {
-    `a_m_m_business_01`,
-    `a_m_m_bevhills_01`,
-    `a_m_y_business_01`,
-    `a_f_m_business_02`,
-    `a_f_y_business_01`,
-    `a_f_y_bevhills_01`,
-    `a_m_m_socenlat_01`
+    "MP_Plane_Passenger_1", "MP_Plane_Passenger_2", "MP_Plane_Passenger_3",
+    "MP_Plane_Passenger_4", "MP_Plane_Passenger_5", "MP_Plane_Passenger_6", "MP_Plane_Passenger_7"
 }
 
 
@@ -206,6 +196,36 @@ local function getRandomSimplePlanePedModel()
     end
 
     return simplePool[math.random(1, #simplePool)]
+end
+
+local function applySimplePlanePedOutfit(ped)
+    if not DoesEntityExist(ped) then
+        return
+    end
+
+    SetPedDefaultComponentVariation(ped)
+
+    for propIndex = 0, 8 do
+        ClearPedProp(ped, propIndex)
+    end
+
+    -- Freemode peds can appear "naked" when not explicitly dressed.
+    -- Apply a safe default outfit if one ever slips into the pool.
+    if IsPedModel(ped, `mp_f_freemode_01`) then
+        SetPedComponentVariation(ped, 2, 0, 0, 0)
+        SetPedComponentVariation(ped, 3, 15, 0, 0)
+        SetPedComponentVariation(ped, 4, 15, 0, 0)
+        SetPedComponentVariation(ped, 6, 35, 0, 0)
+        SetPedComponentVariation(ped, 8, 3, 0, 0)
+        SetPedComponentVariation(ped, 11, 15, 0, 0)
+    elseif IsPedModel(ped, `mp_m_freemode_01`) then
+        SetPedComponentVariation(ped, 2, 0, 0, 0)
+        SetPedComponentVariation(ped, 3, 15, 0, 0)
+        SetPedComponentVariation(ped, 4, 14, 0, 0)
+        SetPedComponentVariation(ped, 6, 34, 0, 0)
+        SetPedComponentVariation(ped, 8, 15, 0, 0)
+        SetPedComponentVariation(ped, 11, 15, 0, 0)
+    end
 end
 
 local function applyOverlay(ped, overlayName, overlayData, randomCfg, randomizeCfg)
@@ -466,6 +486,7 @@ RegisterNetEvent('cs:introCinematic:start', function()
         while not HasModelLoaded(model) do Wait(10) end
         ped[i] = CreatePed(26, model, -1117.7778, -1557.6249, 3.3819, 0.0, false, false)
         SetEntityAsMissionEntity(ped[i], true, true)
+        applySimplePlanePedOutfit(ped[i])
 
         -- sub_b0b5 is a 1-based Lua array while this loop is 0-based.
         -- Shift index so each spawned ped is registered to the proper cutscene seat.
