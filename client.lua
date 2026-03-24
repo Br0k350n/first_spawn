@@ -10,14 +10,36 @@ local sub_b0b5 = {
 }
 
 
-local function applyPedVariations(ped, variations)
-    for _, v in ipairs(variations) do
-        if v[1] ~= 2 then
-            SetPedComponentVariation(ped, v[1], v[2], 0, 0) 
-        else
-            SetPedComponentVariation(ped, v[1], v[2], 1, 1) 
-        end
+
+local function clampComponentVariation(ped, componentId, drawableId, textureId, paletteId)
+    local drawableCount = GetNumberOfPedDrawableVariations(ped, componentId)
+    if drawableCount <= 0 then return end
+
+    local safeDrawable
+    if drawableCount == 1 then
+        safeDrawable = 0
+    else
+        safeDrawable = (math.max(drawableId, 0) % (drawableCount - 1)) + 1
     end
+
+    local textureCount = GetNumberOfPedTextureVariations(ped, componentId, safeDrawable)
+    local safeTexture = textureCount > 0 and (math.max(textureId, 0) % textureCount) or 0
+
+    SetPedComponentVariation(ped, componentId, safeDrawable, safeTexture, paletteId)
+end
+
+local function applyPedVariations(ped, variations)
+    SetPedDefaultComponentVariation(ped)
+
+    for _, v in ipairs(variations) do
+        local componentId = v[1]
+        local drawableId = v[2]
+        local textureId = v[3] or 0
+        local paletteId = v[4] or 0
+
+        clampComponentVariation(ped, componentId, drawableId, textureId, paletteId)
+    end
+
     for i = 0, 8 do
         ClearPedProp(ped, i)
     end
@@ -37,6 +59,14 @@ local function setPedOutfit(ped, outfitType)
 
     local selectedOutfit = outfits[outfitType] or outfits[0]
     applyPedVariations(ped, selectedOutfit)
+
+    -- Fallback: force core clothing components to non-zero drawables when available.
+    local requiredComponents = {3, 4, 6, 11}
+    for _, componentId in ipairs(requiredComponents) do
+        if GetPedDrawableVariation(ped, componentId) <= 0 and GetNumberOfPedDrawableVariations(ped, componentId) > 1 then
+            clampComponentVariation(ped, componentId, 1, 0, 0)
+        end
+    end
 end
 
 local function isRCoreClothingEnabled()
