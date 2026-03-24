@@ -11,13 +11,17 @@ local sub_b0b5 = {
 
 
 local function applyPedVariations(ped, variations)
+    SetPedDefaultComponentVariation(ped)
+
     for _, v in ipairs(variations) do
-        if v[1] ~= 2 then
-            SetPedComponentVariation(ped, v[1], v[2], 0, 0) 
-        else
-            SetPedComponentVariation(ped, v[1], v[2], 1, 1) 
-        end
+        local componentId = v[1]
+        local drawableId = v[2]
+        local textureId = v[3] or 0
+        local paletteId = v[4] or 0
+
+        SetPedComponentVariation(ped, componentId, drawableId, textureId, paletteId)
     end
+
     for i = 0, 8 do
         ClearPedProp(ped, i)
     end
@@ -37,6 +41,12 @@ local function setPedOutfit(ped, outfitType)
 
     local selectedOutfit = outfits[outfitType] or outfits[0]
     applyPedVariations(ped, selectedOutfit)
+
+    -- Fallback: if the scripted outfit still resolves to missing pieces on this build,
+    -- force GTA to randomize valid components so passengers are never fully naked.
+    if GetPedDrawableVariation(ped, 11) <= 0 or GetPedDrawableVariation(ped, 3) <= 0 then
+        SetPedRandomComponentVariation(ped, false)
+    end
 end
 
 local function isRCoreClothingEnabled()
